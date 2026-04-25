@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Voided Studios Admin Panel</title>
+
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0b0b12;
+    color: #eaeaf2;
+  }
+
+  .login {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  input {
+    padding: 10px;
+    margin: 5px;
+    width: 240px;
+    border: none;
+    border-radius: 6px;
+  }
+
+  button {
+    padding: 10px 12px;
+    margin: 5px;
+    border: none;
+    border-radius: 6px;
+    background: #5c6cff;
+    color: white;
+    cursor: pointer;
+  }
+
+  nav {
+    background: #151520;
+    padding: 10px;
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  nav button {
+    margin-right: 10px;
+  }
+
+  section {
+    padding: 20px;
+  }
+
+  .box {
+    background: #161625;
+    padding: 12px;
+    margin: 10px 0;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .small {
+    font-size: 12px;
+    opacity: 0.7;
+  }
+
+  .danger {
+    background: #ff4d4d;
+  }
+
+  .hidden {
+    display: none;
+  }
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="login" class="login">
+  <h2>Voided Studios Admin Login</h2>
+  <input type="password" id="pass" placeholder="Enter password"/>
+  <button onclick="login()">Login</button>
+</div>
+
+<!-- PANEL -->
+<div id="panel" class="hidden">
+
+  <nav>
+    <button onclick="show('staff')">Staff</button>
+    <button onclick="show('promotions')">Promotions</button>
+    <button onclick="show('warnings')">Warnings</button>
+    <button onclick="show('strikes')">Strikes</button>
+  </nav>
+
+  <!-- STAFF -->
+  <section id="staff">
+    <h2>Staff Tracker</h2>
+
+    <input id="staffName" placeholder="Staff Name">
+    <input id="staffRole" placeholder="Role">
+    <button onclick="addStaff()">Add Staff</button>
+
+    <div id="staffList"></div>
+  </section>
+
+  <!-- PROMOTIONS -->
+  <section id="promotions" class="hidden">
+    <h2>Promotions</h2>
+
+    <input id="promoName" placeholder="Staff Name">
+    <input id="promoTo" placeholder="Promoted To">
+    <button onclick="addPromo()">Add Promotion</button>
+
+    <div id="promoList"></div>
+  </section>
+
+  <!-- WARNINGS -->
+  <section id="warnings" class="hidden">
+    <h2>Warnings</h2>
+
+    <input id="warnName" placeholder="Staff Name">
+    <input id="warnReason" placeholder="Reason">
+    <button onclick="addWarning()">Add Warning</button>
+
+    <div id="warnList"></div>
+  </section>
+
+  <!-- STRIKES -->
+  <section id="strikes" class="hidden">
+    <h2>Strikes</h2>
+
+    <input id="strikeName" placeholder="Staff Name">
+    <input id="strikeReason" placeholder="Reason">
+    <button onclick="addStrike()">Add Strike</button>
+
+    <div id="strikeList"></div>
+  </section>
+
+</div>
+
+<script type="module">
+
+/* 🔐 PASSWORD */
+const PASSWORD = "VoidedStudios.Agent";
+
+/* FIREBASE IMPORTS */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  deleteDoc,
+  doc,
+  onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+/* CONFIG */
+const firebaseConfig = {
+  apiKey: "AIzaSyDXOKJGcxkwJ-iPpIyVUHK2naYMNBBRfjs",
+  authDomain: "voidedstudios-admin.firebaseapp.com",
+  projectId: "voidedstudios-admin",
+  storageBucket: "voidedstudios-admin.firebasestorage.app",
+  messagingSenderId: "383785543622",
+  appId: "1:383785543622:web:95bd79ceca7baecf1134c7",
+  measurementId: "G-SGFBNCHN7R"
+};
+
+/* INIT */
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* LOGIN */
+window.login = function () {
+  const pass = document.getElementById("pass").value;
+
+  if (pass === PASSWORD) {
+    document.getElementById("login").classList.add("hidden");
+    document.getElementById("panel").classList.remove("hidden");
+  } else {
+    alert("Wrong password");
+  }
+};
+
+/* NAV */
+window.show = function (id) {
+  document.querySelectorAll("section").forEach(s => s.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+};
+
+/* ================= STAFF ================= */
+
+onSnapshot(collection(db, "staff"), (snap) => {
+  let html = "";
+  snap.forEach(d => {
+    html += `
+      <div class="box">
+        <div>
+          <b>${d.data().name}</b><br>
+          <span class="small">${d.data().role}</span>
+        </div>
+        <button class="danger" onclick="delStaff('${d.id}')">Delete</button>
+      </div>
+    `;
+  });
+  document.getElementById("staffList").innerHTML = html;
+});
+
+window.addStaff = async function () {
+  const name = document.getElementById("staffName").value;
+  const role = document.getElementById("staffRole").value;
+
+  if (!name || !role) return;
+
+  await addDoc(collection(db, "staff"), { name, role });
+};
+
+window.delStaff = async function (id) {
+  await deleteDoc(doc(db, "staff", id));
+};
+
+/* ================= PROMOTIONS ================= */
+
+onSnapshot(collection(db, "promotions"), (snap) => {
+  let html = "";
+  snap.forEach(d => {
+    const data = d.data();
+    html += `
+      <div class="box">
+        <div>
+          <b>${data.name}</b><br>
+          <span class="small">Promoted to: ${data.to}</span>
+        </div>
+        <button class="danger" onclick="delPromo('${d.id}')">Delete</button>
+      </div>
+    `;
+  });
+  document.getElementById("promoList").innerHTML = html;
+});
+
+window.addPromo = async function () {
+  const name = document.getElementById("promoName").value;
+  const to = document.getElementById("promoTo").value;
+
+  if (!name || !to) return;
+
+  await addDoc(collection(db, "promotions"), {
+    name,
+    to,
+    time: Date.now()
+  });
+};
+
+window.delPromo = async function (id) {
+  await deleteDoc(doc(db, "promotions", id));
+};
+
+/* ================= WARNINGS ================= */
+
+onSnapshot(collection(db, "warnings"), (snap) => {
+  let html = "";
+  snap.forEach(d => {
+    const data = d.data();
+    html += `
+      <div class="box">
+        <div>
+          <b>${data.name}</b><br>
+          <span class="small">${data.reason}</span>
+        </div>
+        <button class="danger" onclick="delWarn('${d.id}')">Delete</button>
+      </div>
+    `;
+  });
+  document.getElementById("warnList").innerHTML = html;
+});
+
+window.addWarning = async function () {
+  const name = document.getElementById("warnName").value;
+  const reason = document.getElementById("warnReason").value;
+
+  if (!name || !reason) return;
+
+  await addDoc(collection(db, "warnings"), { name, reason });
+};
+
+window.delWarn = async function (id) {
+  await deleteDoc(doc(db, "warnings", id));
+};
+
+/* ================= STRIKES ================= */
+
+onSnapshot(collection(db, "strikes"), (snap) => {
+  let html = "";
+  snap.forEach(d => {
+    const data = d.data();
+    html += `
+      <div class="box">
+        <div>
+          <b>${data.name}</b><br>
+          <span class="small">${data.reason}</span>
+        </div>
+        <button class="danger" onclick="delStrike('${d.id}')">Delete</button>
+      </div>
+    `;
+  });
+  document.getElementById("strikeList").innerHTML = html;
+});
+
+window.addStrike = async function () {
+  const name = document.getElementById("strikeName").value;
+  const reason = document.getElementById("strikeReason").value;
+
+  if (!name || !reason) return;
+
+  await addDoc(collection(db, "strikes"), { name, reason });
+};
+
+window.delStrike = async function (id) {
+  await deleteDoc(doc(db, "strikes", id));
+};
+
+</script>
+
+</body>
+</html>
