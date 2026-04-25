@@ -24,18 +24,18 @@
   input {
     padding: 10px;
     margin: 5px;
-    width: 240px;
-    border: none;
+    width: 250px;
     border-radius: 6px;
+    border: none;
   }
 
   button {
     padding: 10px 12px;
     margin: 5px;
-    border: none;
-    border-radius: 6px;
     background: #5c6cff;
+    border: none;
     color: white;
+    border-radius: 6px;
     cursor: pointer;
   }
 
@@ -44,10 +44,7 @@
     padding: 10px;
     display: flex;
     flex-wrap: wrap;
-  }
-
-  nav button {
-    margin-right: 10px;
+    gap: 10px;
   }
 
   section {
@@ -84,7 +81,10 @@
 <!-- LOGIN -->
 <div id="login" class="login">
   <h2>Voided Studios Admin Login</h2>
-  <input type="password" id="pass" placeholder="Enter password"/>
+
+  <input id="email" placeholder="Email">
+  <input id="pass" type="password" placeholder="Password">
+
   <button onclick="login()">Login</button>
 </div>
 
@@ -96,6 +96,7 @@
     <button onclick="show('promotions')">Promotions</button>
     <button onclick="show('warnings')">Warnings</button>
     <button onclick="show('strikes')">Strikes</button>
+    <button onclick="logout()">Logout</button>
   </nav>
 
   <!-- STAFF -->
@@ -146,10 +147,7 @@
 
 <script type="module">
 
-/* 🔐 PASSWORD */
-const PASSWORD = "VoidedStudios.Agent";
-
-/* FIREBASE IMPORTS */
+/* FIREBASE */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
   getFirestore,
@@ -159,6 +157,13 @@ import {
   doc,
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
 /* CONFIG */
 const firebaseConfig = {
@@ -174,17 +179,34 @@ const firebaseConfig = {
 /* INIT */
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 /* LOGIN */
-window.login = function () {
+window.login = async function () {
+  const email = document.getElementById("email").value;
   const pass = document.getElementById("pass").value;
 
-  if (pass === PASSWORD) {
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch (e) {
+    alert("Login failed: " + e.message);
+  }
+};
+
+/* AUTH STATE */
+onAuthStateChanged(auth, (user) => {
+  if (user) {
     document.getElementById("login").classList.add("hidden");
     document.getElementById("panel").classList.remove("hidden");
   } else {
-    alert("Wrong password");
+    document.getElementById("login").classList.remove("hidden");
+    document.getElementById("panel").classList.add("hidden");
   }
+});
+
+/* LOGOUT */
+window.logout = async function () {
+  await signOut(auth);
 };
 
 /* NAV */
@@ -194,15 +216,15 @@ window.show = function (id) {
 };
 
 /* ================= STAFF ================= */
-
 onSnapshot(collection(db, "staff"), (snap) => {
   let html = "";
   snap.forEach(d => {
+    const x = d.data();
     html += `
       <div class="box">
         <div>
-          <b>${d.data().name}</b><br>
-          <span class="small">${d.data().role}</span>
+          <b>${x.name}</b><br>
+          <span class="small">${x.role}</span>
         </div>
         <button class="danger" onclick="delStaff('${d.id}')">Delete</button>
       </div>
@@ -214,7 +236,6 @@ onSnapshot(collection(db, "staff"), (snap) => {
 window.addStaff = async function () {
   const name = document.getElementById("staffName").value;
   const role = document.getElementById("staffRole").value;
-
   if (!name || !role) return;
 
   await addDoc(collection(db, "staff"), { name, role });
@@ -225,16 +246,15 @@ window.delStaff = async function (id) {
 };
 
 /* ================= PROMOTIONS ================= */
-
 onSnapshot(collection(db, "promotions"), (snap) => {
   let html = "";
   snap.forEach(d => {
-    const data = d.data();
+    const x = d.data();
     html += `
       <div class="box">
         <div>
-          <b>${data.name}</b><br>
-          <span class="small">Promoted to: ${data.to}</span>
+          <b>${x.name}</b><br>
+          <span class="small">Promoted to: ${x.to}</span>
         </div>
         <button class="danger" onclick="delPromo('${d.id}')">Delete</button>
       </div>
@@ -246,14 +266,9 @@ onSnapshot(collection(db, "promotions"), (snap) => {
 window.addPromo = async function () {
   const name = document.getElementById("promoName").value;
   const to = document.getElementById("promoTo").value;
-
   if (!name || !to) return;
 
-  await addDoc(collection(db, "promotions"), {
-    name,
-    to,
-    time: Date.now()
-  });
+  await addDoc(collection(db, "promotions"), { name, to, time: Date.now() });
 };
 
 window.delPromo = async function (id) {
@@ -261,16 +276,15 @@ window.delPromo = async function (id) {
 };
 
 /* ================= WARNINGS ================= */
-
 onSnapshot(collection(db, "warnings"), (snap) => {
   let html = "";
   snap.forEach(d => {
-    const data = d.data();
+    const x = d.data();
     html += `
       <div class="box">
         <div>
-          <b>${data.name}</b><br>
-          <span class="small">${data.reason}</span>
+          <b>${x.name}</b><br>
+          <span class="small">${x.reason}</span>
         </div>
         <button class="danger" onclick="delWarn('${d.id}')">Delete</button>
       </div>
@@ -282,7 +296,6 @@ onSnapshot(collection(db, "warnings"), (snap) => {
 window.addWarning = async function () {
   const name = document.getElementById("warnName").value;
   const reason = document.getElementById("warnReason").value;
-
   if (!name || !reason) return;
 
   await addDoc(collection(db, "warnings"), { name, reason });
@@ -293,16 +306,15 @@ window.delWarn = async function (id) {
 };
 
 /* ================= STRIKES ================= */
-
 onSnapshot(collection(db, "strikes"), (snap) => {
   let html = "";
   snap.forEach(d => {
-    const data = d.data();
+    const x = d.data();
     html += `
       <div class="box">
         <div>
-          <b>${data.name}</b><br>
-          <span class="small">${data.reason}</span>
+          <b>${x.name}</b><br>
+          <span class="small">${x.reason}</span>
         </div>
         <button class="danger" onclick="delStrike('${d.id}')">Delete</button>
       </div>
@@ -314,7 +326,6 @@ onSnapshot(collection(db, "strikes"), (snap) => {
 window.addStrike = async function () {
   const name = document.getElementById("strikeName").value;
   const reason = document.getElementById("strikeReason").value;
-
   if (!name || !reason) return;
 
   await addDoc(collection(db, "strikes"), { name, reason });
